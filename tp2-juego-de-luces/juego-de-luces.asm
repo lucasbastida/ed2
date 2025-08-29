@@ -1,7 +1,12 @@
 LIST P=16F887
 #include "p16f887.inc"
 
-
+;**** Definición de Variables ****
+	    CBLOCK  0X20
+		    DELAY1 
+		    DELAY2 
+		    DELAY3
+	    ENDC
 	ORG 0x00
 	GOTO INICIO
 INICIO	ORG 0x05
@@ -38,3 +43,20 @@ INICIO	ORG 0x05
 	BCF PORTB, RB6    ; RB6 LOW
 	BCF PORTB, RB7    ; RB7 LOW
 	
+
+	; Subrutina de Retardo con 3 Bucles Anidados para 200ms
+DELAY_200ms		MOVLW   D'141'	; m -> W
+				MOVWF   DELAY1	; W -> DELAY1
+	    LOOP1	MOVLW   D'142'	; n -> W
+				MOVWF   DELAY2	; W -> DELAY2
+	    LOOP2	MOVLW   D'2'	; p -> W
+				MOVWF   DELAY3	; W -> DELAY3
+	    LOOP3	DECFSZ  DELAY3,F
+	    GOTO    LOOP3
+	    DECFSZ  DELAY2,F
+	    GOTO    LOOP2
+	    DECFSZ  DELAY1,F
+	    GOTO    LOOP1
+	    RETURN	
+	
+	    END
