@@ -1,3 +1,4 @@
+;*** Directivas de inclusion ***
 LIST P=16F887
 #include "p16f887.inc"
 
@@ -7,10 +8,12 @@ LIST P=16F887
 		    DELAY2 
 		    DELAY3
 	    ENDC
+;*** Inicializacion del programa ***
 	ORG 0x00
 	GOTO INICIO
-INICIO	ORG 0x05
-	
+	INICIO	ORG 0x05
+;*** Configuracion de puertos***
+	; Establesco como digital
 	BSF STATUS, RPO
 	BSF STATUS, RP1   ; BANK 3
 	BCF ANSEL,  ANS5  ; RE5 DIGITAL
@@ -22,6 +25,7 @@ INICIO	ORG 0x05
 	BCF ANSELH, ANS13 ; RB5 DIGITAL
 			  ; RB6 DIGITAL
 			  ; RB7 DIGITAL
+; Entrada o salida
         BCF STATUS, RP1   ; BANK 1
         BSF TRISE, TRISE0 ; RE0 ENTRADA
 	BCF TRISB, TRISB0 ; RB0 SALIDA
@@ -32,6 +36,7 @@ INICIO	ORG 0x05
 	BCF TRISB, TRISB5 ; RB5 SALIDA
 	BCF TRISB, TRISB6 ; RB6 SALIDA
 	BCF TRISB, TRISB7 ; RB7 SALIDA
+; Estado inicial
 	BCF STATUS, RP0   ; BANK 0
 	BCF PORTE, RE0	  ; RE0 LOW
 	BCF PORTB, RB0	  ; RB0 LOW
@@ -42,8 +47,35 @@ INICIO	ORG 0x05
 	BCF PORTB, RB5    ; RB5 LOW
 	BCF PORTB, RB6    ; RB6 LOW
 	BCF PORTB, RB7    ; RB7 LOW
-	
 
+;*** Programa principal ***
+INICIO	    BTFSC   PORTE,0	   ;SI PULSO SALTA Y HACE EL BARRIDO
+	    GOTO    BLINKING	   ;SI NO PULSO VA A BLINKING
+	    MOVLW   0b10000000	    
+	    MOVWF   PORTB
+BARRIDO_D   CALL    DELAY_200ms
+	    BTFSC   PORTE,0	   ;SI PULSO BOTON SALTA Y SIGUE EL BARRIDO
+	    GOTO    BLINKING
+	    RRF	    PORTB
+	    BTFSS   PORTB,0	   ;SI EL 1 LLEGO AL BIT0 DE PORTB TERMINA EL LOOP
+	    GOTO    BARRIDO_D
+BARRIDO_I   CALL    DELAY_200ms
+	    BTFSC   PORTE,0	   ;SI PULSO BOTON SALTA Y SIGUE EL BARRIDO
+	    GOTO    BLINKING	   ;SINO VA A BLINKING
+	    RLF	    PORTB
+	    BTFSS   PORTB,7	   ;SI EL 1 LLEGA AL BIT7 DE PORTB VUELVE AL BARRIDO_D
+	    GOTO    BARRIDO_I
+	    GOTO    BARRIDO_D
+
+BLINKING    MOVLW   0b00000000
+	    MOVWF   PORTB
+BLINK	    CALL    DELAY_1s
+	    BTFSS   PORTE,0	   	;SI NO PULSO BOTON SALTA Y SIGUE EL BLINKING
+	    GOTO    BARRIDO_D	   ;SI LO PULSO VOY A BARRIDO
+	    COMF    PORTB
+	    GOTO    BLINK
+
+;*** Subrutinas ***
 	; Subrutina de Retardo con 3 Bucles Anidados para 200ms
 DELAY_200ms		MOVLW   D'141'	; m -> W
 				MOVWF   DELAY1	; W -> DELAY1
@@ -58,5 +90,8 @@ DELAY_200ms		MOVLW   D'141'	; m -> W
 	    DECFSZ  DELAY1,F
 	    GOTO    LOOP1
 	    RETURN	
+; Subrutina de retardo con 3 bucles anidados para 1s
+DELAY_1s
 	
+
 	    END
