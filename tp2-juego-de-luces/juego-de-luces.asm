@@ -11,7 +11,7 @@ LIST P=16F887
 ;*** Inicializacion del programa ***
 	ORG 0x00
 	GOTO INICIO
-	INICIO	ORG 0x05
+
 ;*** Configuracion de puertos***
 	; Establesco como digital
 	BSF STATUS, RPO
@@ -49,31 +49,31 @@ LIST P=16F887
 	BCF PORTB, RB7    ; RB7 LOW
 
 ;*** Programa principal ***
-INICIO	    BTFSC   PORTE,0	   ;SI PULSO SALTA Y HACE EL BARRIDO
-	    GOTO    BLINKING	   ;SI NO PULSO VA A BLINKING
-	    MOVLW   0b10000000	    
-	    MOVWF   PORTB
+INICIO	ORG 0x05    
+		BTFSC   PORTE,0			; PULSO -> BARRIDO
+	    GOTO    BLINKING		; NO PULSO -> VOY A BLINKING
+	    MOVLW   b'10000000'		; pone en 1 el MSB
+	    MOVWF   PORTB			; prende led  izq
 BARRIDO_D   CALL    DELAY_200ms
-	    BTFSC   PORTE,0	   ;SI PULSO BOTON SALTA Y SIGUE EL BARRIDO
+	    BTFSC   PORTE,0			; PULSO -> BARRIDO
 	    GOTO    BLINKING
 	    RRF	    PORTB
-	    BTFSS   PORTB,0	   ;SI EL 1 LLEGO AL BIT0 DE PORTB TERMINA EL LOOP
-	    GOTO    BARRIDO_D
+	    BTFSS   PORTB,0			; Si el 1 llego al BIT0 de PORTB termina el loop y pasa a BARRIDO_I
+	    GOTO    BARRIDO_D		; Sino sigue moviendo a la der
 BARRIDO_I   CALL    DELAY_200ms
-	    BTFSC   PORTE,0	   ;SI PULSO BOTON SALTA Y SIGUE EL BARRIDO
-	    GOTO    BLINKING	   ;SINO VA A BLINKING
+	    BTFSC   PORTE,0			; PULSO -> BARRIDO
+	    GOTO    BLINKING		; NO PULSO -> VOY A BLINKING
 	    RLF	    PORTB
-	    BTFSS   PORTB,7	   ;SI EL 1 LLEGA AL BIT7 DE PORTB VUELVE AL BARRIDO_D
-	    GOTO    BARRIDO_I
+	    BTFSS   PORTB,7			; Si el 1 llego al BIT7 de PORTB vuelve a BARRIDO_D
+	    GOTO    BARRIDO_I		; Sino sigue moviendo a la izq
 	    GOTO    BARRIDO_D
 
-BLINKING    MOVLW   0b00000000
-	    MOVWF   PORTB
+BLINKING	CLRF PORTB			; Apaga todos los leds
 BLINK	    CALL    DELAY_1s
-	    BTFSS   PORTE,0	   	;SI NO PULSO BOTON SALTA Y SIGUE EL BLINKING
-	    GOTO    BARRIDO_D	   ;SI LO PULSO VOY A BARRIDO
-	    COMF    PORTB
-	    GOTO    BLINK
+	    BTFSS   PORTE,0			; NO PULSO -> (salta) BLINKING
+	    GOTO    BARRIDO_D		; PULSO -> BARRIDO
+	    COMF    PORTB			; Invierte todos los leds
+	    GOTO    BLINK			; Repite
 
 ;*** Subrutinas ***
 	; Subrutina de Retardo con 3 Bucles Anidados para 200ms
@@ -90,22 +90,24 @@ DELAY_200ms		MOVLW   D'141'	; m -> W
 	    DECFSZ  DELAY1,F
 	    GOTO    LOOP1
 	    RETURN	
+
 ; Subrutina de retardo con 3 bucles anidados para 1s
 DELAY_1s	MOVLW   D'255'	; 255 -> W
-		MOVWF   DELAY1	; W -> DELAY1
-		MOVLW   D'245'	; 245 -> W
-		MOVWF   DELAY2	; W -> DELAY2
-LOOP2		MOVLW   D'4'	; p -> W
-		MOVWF   DELAY3	; W -> DELAY3
-LOOP3		DECFSZ  DELAY3,F
-		GOTO    LOOP3
-		DECFSZ  DELAY2,F
-		GOTO    LOOP2
-		DECFSZ  DELAY1,F
-		GOTO    LOOP1
-		RETURN	
-	
+			MOVWF   DELAY1	; W -> DELAY1
+	LOOPA	MOVLW   D'245'	; 245 -> W
+			MOVWF   DELAY2	; W -> DELAY2
+	LOOPB	MOVLW   D'4'	; p -> W
+			MOVWF   DELAY3	; W -> DELAY3
+	LOOPC	DECFSZ  DELAY3,F
+			GOTO    LOOP3
+			DECFSZ  DELAY2,F
+			GOTO    LOOP2
+			DECFSZ  DELAY1,F
+			GOTO    LOOP1
+			RETURN	
+		
 	
 
 	    END
+
 
