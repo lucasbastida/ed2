@@ -11,12 +11,13 @@ LIST P=16F887
 ;*** Inicializacion del programa ***
 	ORG 0x00
 	GOTO INICIO
+INICIO	ORG 0x05 
 
 ;*** Configuracion de puertos***
 	; Establesco como digital
-	BSF STATUS, RPO
+	BSF STATUS, RP0
 	BSF STATUS, RP1   ; BANK 3
-	BCF ANSEL,  ANS5  ; RE5 DIGITAL
+	BCF ANSEL,  ANS5  ; RE0 DIGITAL
 	BCF ANSELH, ANS12 ; RB0 DIGITAL
 	BCF ANSELH, ANS10 ; RB1 DIGITAL
 	BCF ANSELH, ANS8  ; RB2 DIGITAL
@@ -49,7 +50,7 @@ LIST P=16F887
 	BCF PORTB, RB7    ; RB7 LOW
 
 ;*** Programa principal ***
-INICIO	ORG 0x05    
+
 		BTFSC   PORTE,0			; PULSO -> BARRIDO
 	    GOTO    BLINKING		; NO PULSO -> VOY A BLINKING
 	    MOVLW   b'10000000'		; pone en 1 el MSB
