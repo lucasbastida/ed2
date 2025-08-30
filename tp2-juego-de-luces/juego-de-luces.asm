@@ -12,7 +12,7 @@ LIST P=16F887
 	ORG 0x00
 	GOTO INICIO
 INICIO	ORG 0x05 
-
+	
 ;*** Configuracion de puertos***
 	; Establesco como digital
 	BSF STATUS, RP0
@@ -51,9 +51,9 @@ INICIO	ORG 0x05
 
 ;*** Programa principal ***
 
-		BTFSC   PORTE,0			; PULSO -> BARRIDO
+	    BTFSC   PORTE,0			; PULSO -> BARRIDO
 	    GOTO    BLINKING		; NO PULSO -> VOY A BLINKING
-	    MOVLW   b'10000000'		; pone en 1 el MSB
+BARRIDO	    MOVLW   b'10000000'		; pone en 1 el MSB
 	    MOVWF   PORTB			; prende led  izq
 BARRIDO_D   CALL    DELAY_200ms
 	    BTFSC   PORTE,0			; PULSO -> BARRIDO
@@ -72,7 +72,7 @@ BARRIDO_I   CALL    DELAY_200ms
 BLINKING	CLRF PORTB			; Apaga todos los leds
 BLINK	    CALL    DELAY_1s
 	    BTFSS   PORTE,0			; NO PULSO -> (salta) BLINKING
-	    GOTO    BARRIDO_D		; PULSO -> BARRIDO
+	    GOTO    BARRIDO		; PULSO -> BARRIDO
 	    COMF    PORTB			; Invierte todos los leds
 	    GOTO    BLINK			; Repite
 
