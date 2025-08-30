@@ -90,6 +90,7 @@ DELAY_200ms		MOVLW   D'141'	; m -> W
 	    GOTO    LOOP2
 	    DECFSZ  DELAY1,F
 	    GOTO    LOOP1
+	    CLRWDT
 	    RETURN	
 
 ; Subrutina de retardo con 3 bucles anidados para 1s
@@ -100,11 +101,12 @@ DELAY_1s	MOVLW   D'255'	; 255 -> W
 	LOOPB	MOVLW   D'4'	; p -> W
 			MOVWF   DELAY3	; W -> DELAY3
 	LOOPC	DECFSZ  DELAY3,F
-			GOTO    LOOP3
+			GOTO    LOOPC
 			DECFSZ  DELAY2,F
-			GOTO    LOOP2
+			GOTO    LOOPB
 			DECFSZ  DELAY1,F
-			GOTO    LOOP1
+			GOTO    LOOPA
+			CLRWDT
 			RETURN	
 		
 	
