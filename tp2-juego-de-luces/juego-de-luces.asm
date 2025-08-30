@@ -1,6 +1,8 @@
 ;*** Directivas de inclusion ***
 LIST P=16F887
 #include "p16f887.inc"
+	    
+	    __CONFIG _CONFIG1, _XT_OSC & _WDTE_OFF & _MCLRE_ON & _LVP_OFF
 
 ;**** Definición de Variables ****
 	    CBLOCK  0X20
@@ -53,7 +55,8 @@ INICIO	ORG 0x05
 
 	    BTFSC   PORTE,0			; PULSO -> BARRIDO
 	    GOTO    BLINKING		; NO PULSO -> VOY A BLINKING
-BARRIDO	    MOVLW   b'10000000'		; pone en 1 el MSB
+BARRIDO	    BCF     STATUS, C
+	    MOVLW   b'10000000'		; pone en 1 el MSB
 	    MOVWF   PORTB			; prende led  izq
 BARRIDO_D   CALL    DELAY_200ms
 	    BTFSC   PORTE,0			; PULSO -> BARRIDO
@@ -90,7 +93,6 @@ DELAY_200ms		MOVLW   D'141'	; m -> W
 	    GOTO    LOOP2
 	    DECFSZ  DELAY1,F
 	    GOTO    LOOP1
-	    CLRWDT
 	    RETURN	
 
 ; Subrutina de retardo con 3 bucles anidados para 1s
@@ -106,7 +108,6 @@ DELAY_1s	MOVLW   D'255'	; 255 -> W
 			GOTO    LOOPB
 			DECFSZ  DELAY1,F
 			GOTO    LOOPA
-			CLRWDT
 			RETURN	
 		
 	
