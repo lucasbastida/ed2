@@ -26,3 +26,5 @@
 **/disassembly/
 **/.generated_files/
 
+*.workspace
+**/Project Backups/
