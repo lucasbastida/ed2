@@ -22,23 +22,30 @@ ORG 0X04
     GOTO ISR_INICIO
 ORG 0X05
     
-INICIO	BANKSEL TRISD
-	CLRF	TRISD
+INICIO	BANKSEL TRISD	; (PORTD es digital por default)
+	CLRF	TRISD		; PORTD Salida
 	BANKSEL PORTD
-	CLRF	PORTD
+	CLRF	PORTD		; PORTD estado bajo
 	CLRF NTECLA4
 	CLRF NTECLA3
 	CLRF NTECLA2
 	CLRF NTECLA1
-	BANKSEL ANSELH
-	CLRF	ANSELH
+	BANKSEL ANSELH		
+	CLRF	ANSELH		; PORTB digital
 	BANKSEL PORTB
-	CLRF PORTB
+	CLRF PORTB			; PORTB estado bajo
 	BANKSEL TRISB
-	MOVLW B'00001111'
-	MOVWF TRISB
-	BSF INTCON, INTE
-	BSF INTCON, GIE
+	MOVLW B'00001111'	
+	MOVWF TRISB			; B<7,4>Salidas (columnas), B<3,0>Entradas (filas)
+	BANKSEL ANSEL
+	CLRF	ANSEL	    ; PORTA digital
+	BANKSEL TRISA
+	CLRF	TRISA	    ; PORTA salida
+	BANKSEL PORTA
+	CLRF	PORTA	    ; PORTA estado bajo
+	BSF INTCON, INTE	; Habilito interrupciones externas por RB0
+	BSF INTCON, GIE		; Habilito interrupciones del MCU
+
 LOOP	CALL REFRESH_DISPLAYS
 	GOTO LOOP
 	
@@ -65,32 +72,36 @@ TECL_PRESS  MOVLW B'01110000'
 	    GOTO TEST_COL
 	    
 TEST_COL    CLRF NTECL
+		;Test c1
 	    INCF NTECL, F
 	    BTFSS PORTB, RB3
 	    GOTO TECL_DELAY
+		;Test c2
 	    INCF NTECL, F
 	    BTFSS PORTB, RB2
 	    GOTO TECL_DELAY
+		;Test c3
 	    INCF NTECL, F
 	    BTFSS PORTB, RB1
 	    GOTO TECL_DELAY
+		;Test c4
 	    INCF NTECL, F
 	    BTFSS PORTB, RB0
 	    GOTO TECL_DELAY
 	    GOTO TEST_FIL
 	    
 TEST_FIL    BTFSS PORTB, RB4
-	    GOTO TECL_RST
-	    BSF STATUS, C
+	    GOTO TECL_RST		;si ya probe todo termino la interrupcion
+	    BSF STATUS, C		;sino recorro la siguiente fila
 	    RRF PORTB
-	    GOTO TEST_COL
+	    GOTO TEST_COL		;(columna por columna)
 	    
 TECL_RST    CLRF NTECL
-	    BCF INTCON, RBIF
-	    CLRF PORTB
-	    RETURN
+	    BCF INTCON, RBIF	;bajo la bandera de interrupcion
+	    CLRF PORTB			;limpio puerto
+	    RETURN				;vuelvo a linea 61: GOTO TECL_LOAD
 	    
-TECL_DELAY  BTFSS PORTB, RB3
+TECL_DELAY  BTFSS PORTB, RB3	;loops antirrebote por software
 	    GOTO $-1
 	    BTFSS PORTB, RB2
 	    GOTO $-1
@@ -98,9 +109,9 @@ TECL_DELAY  BTFSS PORTB, RB3
 	    GOTO $-1
 	    BTFSS PORTB, RB0
 	    GOTO $-1
-	    BCF INTCON, RBIF
-	    CLRF PORTB
-	    RETURN
+	    BCF INTCON, RBIF	;bajo bandera de interrupcion
+	    CLRF PORTB			;limpio puerto
+	    RETURN				;vuelvo a linea 61: GOTO TECL_LOAD
 	    
 TECL_LOAD   MOVLW .3
 	    SUBWF CONT_NTECL, W
@@ -134,7 +145,7 @@ LOAD_TECL1  MOVFW NTECL
 	    MOVWF NTECL1
 	    RETURN
 	    
-
+; *** igual al TP anterior ***
 REFRESH_DISPLAYS    MOVLW .4
 		    MOVWF COUNTER_DISPLAY
     LOOP_DISPLAY    MOVLW .4
@@ -234,4 +245,5 @@ TABLE_DECO_DISPLAY_AC	ADDWF PCL, F
 			RETLW b'11111111'
 			RETLW b'10000000'
 			
+
 END
