@@ -36,6 +36,8 @@ INICIO
 	CLRF	ANSELH		; PORTB digital
 	BANKSEL PORTB
 	CLRF PORTB			; PORTB estado bajo
+	BANKSEL OPTION_REG
+	BCF OPTION_REG, NOT_RBPU    ;Habilito resistencias internas de pull-up
 	BANKSEL TRISB
 	MOVLW B'00001111'	
 	MOVWF TRISB			; B<7,4>Salidas (columnas), B<3,0>Entradas (filas)
@@ -49,7 +51,7 @@ INICIO
 	MOVLW B'11111111'
 	MOVWF IOCB
 	BANKSEL INTCON
-	MOVWF .4
+	MOVLW .4
 	MOVWF CONT_NTECL
 	BSF INTCON, RBIE	; Habilito interrupciones externas por PORTB
 	BSF INTCON, GIE		; Habilito interrupciones del MCU
@@ -268,4 +270,5 @@ TABLE_DECO_DISPLAY_AC	ADDWF PCL, F
 			
 
 END
+
 
