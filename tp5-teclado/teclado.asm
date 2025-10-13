@@ -32,6 +32,7 @@ INICIO
 	CLRF NTECLA3
 	CLRF NTECLA2
 	CLRF NTECLA1
+	CLRF NTECL
 	BANKSEL ANSELH		
 	CLRF	ANSELH		; PORTB digital
 	BANKSEL PORTB
@@ -52,10 +53,10 @@ INICIO
 	MOVLW B'11111111'
 	MOVWF IOCB
 	BANKSEL INTCON
-	MOVLW .4
-	MOVWF CONT_NTECL
 	BSF INTCON, RBIE	; Habilito interrupciones externas por PORTB
 	BSF INTCON, GIE		; Habilito interrupciones del MCU
+	MOVLW .4
+	MOVWF CONT_NTECL
 
 LOOP	CALL REFRESH_DISPLAYS
 	GOTO LOOP
@@ -112,7 +113,8 @@ TECL_RST    CLRF NTECL
 	    CLRF PORTB			;limpio puerto
 	    RETURN				;vuelvo a linea 61: GOTO TECL_LOAD
 	    
-TECL_DELAY  BTFSS PORTB, RB3	;loops antirrebote por software
+TECL_DELAY  CALL DELAY_20MS
+		BTFSS PORTB, RB3	;loops antirrebote por software
 	    GOTO $-1
 	    BTFSS PORTB, RB2
 	    GOTO $-1
@@ -269,6 +271,7 @@ TABLE_DECO_DISPLAY_AC	ADDWF PCL, F
 			
 
     END
+
 
 
 
