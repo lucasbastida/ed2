@@ -64,19 +64,22 @@ LOOP	CALL REFRESH_DISPLAYS
 ISR_INICIO  MOVWF W_TEMP
 	    SWAPF STATUS, W
 	    MOVWF STATUS_TEMP
-	    BTFSC INTCON, RBIF
-	    GOTO ISR_TECL
-	    GOTO ISR_FIN
+	    BCF INTCON, RBIE      ; deshabilita mientras atiende
+	    MOVF PORTB, W         ; lectura para resetear latch
+	    BCF INTCON, RBIF
 	    
-ISR_FIN	    BCF INTCON, RBIF
+	    CALL TECL_PRESS
+	    CALL TECL_LOAD
+	    
+ISR_FIN	    CLRF PORTB
+	    MOVF PORTB, F
+	    BCF INTCON, RBIF
+	    BSF INTCON, RBIE      ; vuelve a habilitar interrupción
 	    SWAPF STATUS_TEMP, W
 	    MOVWF STATUS
 	    SWAPF W_TEMP, F
 	    SWAPF W_TEMP, W
 	    RETFIE 
-	    
-ISR_TECL    CALL TECL_PRESS
-	    GOTO TECL_LOAD
 	    
 TECL_PRESS  MOVLW B'01110000'
 	    MOVWF PORTB
@@ -107,11 +110,11 @@ TEST_FIL    BTFSS PORTB, RB4
 	    BSF STATUS, C		;sino recorro la siguiente fila
 	    RRF PORTB
 	    GOTO TEST_COL		;(columna por columna)
+		RETURN
 	    
 TECL_RST    CLRF NTECL
-	    BCF INTCON, RBIF	;bajo la bandera de interrupcion
-	    CLRF PORTB			;limpio puerto
-	    RETURN				;vuelvo a linea 61: GOTO TECL_LOAD
+	    GOTO ISR_FIN
+	    ;RETURN				;vuelvo a linea 61: GOTO TECL_LOAD
 	    
 TECL_DELAY  CALL DELAY_20MS
 		BTFSS PORTB, RB3	;loops antirrebote por software
@@ -142,7 +145,8 @@ TECL_LOAD   MOVLW .4
 	    SUBWF CONT_NTECL, W
 	    BTFSC STATUS, Z
 	    CALL LOAD_TECL1
-	    DECFSZ CONT_NTECL,F
+	    
+		DECFSZ CONT_NTECL,F
 	    GOTO ISR_FIN
 	    MOVLW .4
 	    MOVWF CONT_NTECL
@@ -271,6 +275,7 @@ TABLE_DECO_DISPLAY_AC	ADDWF PCL, F
 			
 
     END
+
 
 
 
