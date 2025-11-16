@@ -58,6 +58,13 @@ CFG_UART_TX	MACRO
 		ENDM
 
 CFG_ADC		MACRO
+		BANKSEL TRISE
+		MOVLW   b'00000001'
+		MOVWF   TRISE
+		BANKSEL ANSEL
+		MOVLW   b'00100000'        ; AN5 analógico, resto digital
+		MOVWF   ANSEL
+		CLRF    ANSELH             ; Puertos digitales superiores
 		BANKSEL ADCON1
 		BCF     ADCON1, ADFM       ; 0 = justificado a la izquierda
 		BANKSEL ADCON0
@@ -625,6 +632,7 @@ TX_ADQ_ASCII:
 			
 
     END
+
 
 
 
