@@ -16,6 +16,8 @@ NTECL_BACK	    EQU 10
 NTECL_SET	    EQU 11
     
     CBLOCK 0X20
+	ContadorDelay
+	ResultadoH
 	COUNTER_DISPLAY
 	DELAY1
 	DELAY2
@@ -23,6 +25,7 @@ NTECL_SET	    EQU 11
 	DELAY4
 	W_TEMP
 	STATUS_TEMP
+	CENTENA
 	DECENAS
 	UNIDAD
 	NTECL
@@ -173,7 +176,7 @@ LOOP_PRUEBA:
 INICIO_PRUEBA_ADC
 	CFG_DISP
     CFG_ADC
-    CFG_INT
+    CFG_INT_ADC
     ;Delay de adquisición (20us aprox.)
     CALL    Delay_50us
     BANKSEL ADCON0
@@ -437,7 +440,7 @@ CONVERT_NTECL:
     RETLW NTECL_SET
 
 AD_BCD:	    CLRF    CENTENA
-	    CLRF    DECENA
+	    CLRF    DECENAS
 	    CLRF    UNIDAD
 TEST_CENTENA MOVLW  d'100' 
 	    SUBWF   ResultadoH,0   ;ResultadoH - 100 -> W
@@ -456,7 +459,7 @@ ADD_CENTENA BCF	    STATUS,C
 	    GOTO    TEST_CENTENA    ;sigo buscando centenas
 ADD_DECENA  BCF	    STATUS,C
 	    MOVWF   ResultadoH	    ;guardo el resto
-	    INCF    DECENA	    ;cuento una decena
+	    INCF    DECENAS	    ;cuento una decena
 	    GOTO    TEST_DECENA	    ;sigo buscando decenas
 
 REFRESH_DISPLAYS:
@@ -623,6 +626,7 @@ TX_ADQ_ASCII:
 			
 
     END
+
 
 
 
