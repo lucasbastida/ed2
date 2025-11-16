@@ -216,8 +216,6 @@ ISR_ADC:
     MOVFW   ADRESH         ; Solo 8 bits
     MOVWF   ResultadoH	
     CALL    AD_BCD	   ; Convierte a binario
-    GOTO    REFRESH_DISPLAYS
-    CALL    LOAD_DISP_VAL
     CALL    REFRESH_DISPLAYS
     GOTO    ISR_FIN
 
@@ -625,6 +623,7 @@ TX_ADQ_ASCII:
 			
 
     END
+
 
 
 
