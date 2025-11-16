@@ -53,7 +53,23 @@ CFG_UART_TX	MACRO
 		MOVLW	.25
 		MOVWF	SPBRG ; 9600 Bd
 		ENDM
-		
+
+CFG_ADC		MACRO
+		BANKSEL ADCON1
+		BCF     ADCON1, ADFM       ; 0 = justificado a la izquierda
+		BANKSEL ADCON0
+		MOVLW   b'10010101'        ; ADCS1=1 ADCS0=0 CHS=0101 (AN5 = RE0) ADON=1
+		MOVWF   ADCON0
+		ENDM
+    
+CFG_INT_ADC	MACRO
+		BANKSEL	INTCON
+		MOVLW	b'11000000'	;Habilita interrupciones globales
+		MOVWF	INTCON		;Habilita int por perifericos
+		BANKSEL	PIE1
+		MOVWF	PIE1		;Habilita int por ADC (fin de conversion)
+		ENDM
+
 CFG_DISP	MACRO
 		BANKSEL TRISD		; (PORTD es digital por default)
 		CLRF	TRISD		; PORTD Salida
@@ -153,14 +169,36 @@ LOOP_PRUEBA:
     CALL TX_ADQ_ASCII
     GOTO LOOP_PRUEBA
     GOTO $
-	
+
+INICIO_PRUEBA_ADC
+	CFG_DISP
+    CFG_ADC
+    CFG_INT
+    ;Delay de adquisición (20us aprox.)
+    CALL    Delay_50us
+    BANKSEL ADCON0
+    BSF     ADCON0, GO_DONE     ; Iniciar conversión  
+    GOTO    INICIO_PRUEBA_ADC
+    
+Delay_50us
+    BANKSEL ContadorDelay
+    movlw   d'12'
+    movwf   ContadorDelay
+D1
+    NOP
+    NOP
+    DECFSZ  ContadorDelay, F
+    GOTO    D1
+    RETURN 
+
 ISR_INICIO:
     MOVWF W_TEMP
     SWAPF STATUS, W
     MOVWF STATUS_TEMP
     BTFSC INTCON, RBIF
     GOTO ISR_TECL
-    ; TODO COMPLETAR CON ADC
+    BTFSC PIR1, ADIF
+    GOTO  ISR_ADC
     GOTO ISR_FIN
 	    
 ISR_FIN:
@@ -169,6 +207,19 @@ ISR_FIN:
     SWAPF W_TEMP, F
     SWAPF W_TEMP, W
     RETFIE 
+
+ISR_ADC:
+    BANKSEL ADCON0
+    ;BCF	    ADCON0, ADON   ; DESHABILITO ADC
+    BCF	    PIR1,ADIF	   ; Bajo bandera
+    BANKSEL ADRESH
+    MOVFW   ADRESH         ; Solo 8 bits
+    MOVWF   ResultadoH	
+    CALL    AD_BCD	   ; Convierte a binario
+    GOTO    REFRESH_DISPLAYS
+    CALL    LOAD_DISP_VAL
+    CALL    REFRESH_DISPLAYS
+    GOTO    ISR_FIN
 
 ISR_TECL:
     BCF INTCON, RBIF 
@@ -370,7 +421,6 @@ CONFIRM_TCL:
     MOVWF UMBRAL_BCD
     GOTO LOAD_DISP_VAL
 
-
 CONVERT_NTECL:
     MOVFW NTECL
     ADDWF PCL, F
@@ -387,7 +437,30 @@ CONVERT_NTECL:
     RETLW NTECL_BACK
     RETLW 0
     RETLW NTECL_SET
-	    
+
+AD_BCD:	    CLRF    CENTENA
+	    CLRF    DECENA
+	    CLRF    UNIDAD
+TEST_CENTENA MOVLW  d'100' 
+	    SUBWF   ResultadoH,0   ;ResultadoH - 100 -> W
+	    BTFSC   STATUS,C
+	    GOTO    ADD_CENTENA	    ;si ResultadoH>100 sumo CENTENA    
+TEST_DECENA MOVLW   d'10' 
+	    SUBWF   ResultadoH,0    ;ResultadoH - 10 -> W
+	    BTFSC   STATUS,C
+	    GOTO    ADD_DECENA	    ;si ADRESH>10 sumo DECENA
+	    MOVFW   ResultadoH
+	    MOVWF   UNIDAD	    ;sino ADRESH va a UNIDAD
+	    RETURN    
+ADD_CENTENA BCF	    STATUS,C
+	    MOVWF   ResultadoH	    ;guardo el resto
+	    INCF    CENTENA	    ;cuento una centena
+	    GOTO    TEST_CENTENA    ;sigo buscando centenas
+ADD_DECENA  BCF	    STATUS,C
+	    MOVWF   ResultadoH	    ;guardo el resto
+	    INCF    DECENA	    ;cuento una decena
+	    GOTO    TEST_DECENA	    ;sigo buscando decenas
+
 REFRESH_DISPLAYS:
     MOVLW DISP_VAL
     SUBWF DISP_STATE, W
@@ -552,6 +625,7 @@ TX_ADQ_ASCII:
 			
 
     END
+
 
 
 
