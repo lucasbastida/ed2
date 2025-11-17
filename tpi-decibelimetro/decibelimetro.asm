@@ -71,12 +71,6 @@ CFG_ADC		MACRO
 		BANKSEL ADCON0
 		MOVLW   b'10010101'        ; ADCS1=1 ADCS0=0 CHS=0101 (AN5 = RE0) ADON=1
 		MOVWF   ADCON0
-		ENDM
-    
-CFG_INT_ADC	MACRO
-		BANKSEL	INTCON
-		MOVLW	b'11000000'	;Habilita interrupciones globales
-		MOVWF	INTCON		;Habilita int por perifericos
 		BANKSEL	PIE1
 		MOVWF	PIE1		;Habilita int por ADC (fin de conversion)
 		ENDM
@@ -131,7 +125,7 @@ CFG_TECLADO	MACRO
 		ENDM
 
     ORG 0X00
-    GOTO INICIO_PRUEBA_TECL_DISPLAY
+    GOTO INICIO
     ORG 0X04
     GOTO ISR_INICIO
     ORG 0X05
@@ -157,61 +151,20 @@ TABLE_DECO_DISPLAY_AC	ADDWF PCL, F
 			RETLW b'10100001' ;d
 			RETLW b'10000011' ;b
 			RETLW b'11111111' ;off
-		
-INICIO_PRUEBA_TECL_DISPLAY:
+
+INICIO:
     CFG_DISP
     CFG_TECLADO
+    CFG_UART_TX
+    CFG_ADC
     BANKSEL INTCON
     BSF INTCON, GIE
-    BCF STATUS, RP0
-    BCF STATUS, RP1
-    MOVLW 4
-    MOVWF DECENAS
-    MOVLW 5
-    MOVWF UNIDAD
-    CALL REFRESH_DISPLAYS
-    GOTO $-1
-	
-INICIO_PRUEBA_EUSART:
-    CFG_UART_TX
-    BCF STATUS, RP0
-    BCF STATUS, RP1
-LOOP_PRUEBA:
-    MOVLW .1
-    MOVWF DECENAS
-    MOVLW .1
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
-    
-    MOVLW .1
-    MOVWF DECENAS
-    MOVLW .2
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
-    
-    MOVLW .2
-    MOVWF DECENAS
-    MOVLW .1
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
-    
-    MOVLW .1
-    MOVWF DECENAS
-    MOVLW .1
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
-    GOTO LOOP_PRUEBA
-    GOTO $
-
-INICIO_PRUEBA_ADC
-	CFG_DISP
-    CFG_ADC
-    CFG_INT_ADC
-    ;Delay de adquisición (20us aprox.)
-    CALL    Delay_50us
+LOOP:
+    CALL    Delay_50us ; Delay de adquisicion (20us aprox.)
     BANKSEL ADCON0
-    BSF     ADCON0, GO_DONE     ; Iniciar conversión  
-    GOTO    INICIO_PRUEBA_ADC
+    BSF     ADCON0, GO_DONE ; Iniciar conversion  
+    CALL REFRESH_DISPLAYS
+    GOTO LOOP
 
 ISR_INICIO:
     MOVWF W_TEMP
@@ -232,24 +185,20 @@ ISR_FIN:
 
 ISR_ADC:
     BANKSEL ADCON0
-    ;BCF	    ADCON0, ADON   ; DESHABILITO ADC
-    BCF	    PIR1,ADIF	   ; Bajo bandera
     BANKSEL ADRESH
     MOVFW   ADRESH         ; Solo 8 bits
     MOVWF   ResultadoH	
     CALL    AD_BCD	   ; Convierte a binario
-    CALL    REFRESH_DISPLAYS
+    CALL    CONVERT_TO_DB
+    CALL    CHECK_ALARM
+    BCF	    PIR1,ADIF	   ; Bajo bandera
     GOTO    ISR_FIN
 
 ISR_TECL:
-    BCF INTCON, RBIF 
-    BCF INTCON, RBIE      ; deshabilita mientras atiende
-    MOVF PORTB, W         ; lectura para resetear latch
     CALL TECL_PRESS
     CALL TECL_LOAD
     CLRF PORTB
     BCF INTCON, RBIF
-    BSF INTCON, RBIE
     GOTO ISR_FIN
     
 TECL_PRESS:
@@ -572,11 +521,11 @@ LOAD_LAST_ADQ:
     MOVWF DISP3
     RETURN
     
-Delay_50us
+Delay_50us:
     BANKSEL ContadorDelay
     movlw   d'12'
     movwf   ContadorDelay
-D1
+D1:
     NOP
     NOP
     DECFSZ  ContadorDelay, F
@@ -631,6 +580,9 @@ TX_ADQ_ASCII:
     CALL UART_TX
     RETURN
     
+CONVERT_TO_DB: ; TODO IMPLEMENTAR
+    RETURN
+    
 CHECK_ALARM:
     MOVFW DECENAS
     MOVWF DB_BCD
@@ -643,15 +595,62 @@ CHECK_ALARM:
     BSF PORTC, RC0
     RETURN		
 
+INICIO_PRUEBA_TECL_DISPLAY:
+    CFG_DISP
+    CFG_TECLADO
+    BANKSEL INTCON
+    BSF INTCON, GIE
+    BCF STATUS, RP0
+    BCF STATUS, RP1
+    MOVLW 4
+    MOVWF DECENAS
+    MOVLW 5
+    MOVWF UNIDAD
+    CALL REFRESH_DISPLAYS
+    GOTO $-1
+    
+	
+INICIO_PRUEBA_EUSART:
+    CFG_UART_TX
+    BCF STATUS, RP0
+    BCF STATUS, RP1
+LOOP_PRUEBA:
+    MOVLW .1
+    MOVWF DECENAS
+    MOVLW .1
+    MOVWF UNIDAD
+    CALL TX_ADQ_ASCII
+    
+    MOVLW .1
+    MOVWF DECENAS
+    MOVLW .2
+    MOVWF UNIDAD
+    CALL TX_ADQ_ASCII
+    
+    MOVLW .2
+    MOVWF DECENAS
+    MOVLW .1
+    MOVWF UNIDAD
+    CALL TX_ADQ_ASCII
+    
+    MOVLW .1
+    MOVWF DECENAS
+    MOVLW .1
+    MOVWF UNIDAD
+    CALL TX_ADQ_ASCII
+    GOTO LOOP_PRUEBA
+
+INICIO_PRUEBA_ADC:
+    CFG_DISP
+    CFG_ADC
+    BANKSEL INTCON
+    BSF INTCON, GIE
+LOOP_PRUEBA_ADC:
+    CALL    Delay_50us ;Delay de adquisicion (20us aprox.)
+    BANKSEL ADCON0
+    BSF     ADCON0, GO_DONE     ; Iniciar conversion  
+    CALL REFRESH_DISPLAYS
+    GOTO LOOP_PRUEBA_ADC
+    
+    
     END
-
-
-
-
-
-
-
-
-
-
-
