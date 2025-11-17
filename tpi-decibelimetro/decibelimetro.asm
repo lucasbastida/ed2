@@ -115,21 +115,16 @@ CFG_DISP	MACRO
 CFG_TECLADO	MACRO
 		BANKSEL ANSELH		
 		CLRF	ANSELH ; PORTB digital
+		BANKSEL OPTION_REG
+		BCF OPTION_REG, NOT_RBPU ;Habilito resistencias internas de pull-up
+		MOVLW B'00001111'	
+		MOVWF TRISB ; B<7,4>Salidas, B<3,0>Entradas
+		MOVWF IOCB ;interrumpe B<3,0> 
+		MOVWF WPUB ;pull-ups en B<3,0> 
 		BANKSEL PORTB
 		MOVLW B'11110000' ; PORTB estado bajo
 		MOVWF PORTB
-		BANKSEL OPTION_REG
-		BCF OPTION_REG, NOT_RBPU ;Habilito resistencias internas de pull-up
-		BANKSEL TRISB
-		MOVLW B'00001111'	
-		MOVWF TRISB ; B<7,4>Salidas, B<3,0>Entradas
-		BANKSEL IOCB
-		MOVLW B'11111111'
-		MOVWF IOCB
-		BANKSEL INTCON
 		BSF INTCON, RBIE ; Habilito interrupciones externas por PORTB
-		BCF STATUS, RP0
-		BCF STATUS, RP1
 		CLRF NTECL
 		ENDM
 
@@ -664,3 +659,4 @@ CHECK_ALARM:
     
     
     END
+
