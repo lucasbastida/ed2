@@ -72,12 +72,14 @@ CFG_ADC		MACRO
 		MOVLW   b'10010101'        ; ADCS1=1 ADCS0=0 CHS=0101 (AN5 = RE0) ADON=1
 		MOVWF   ADCON0
 		BANKSEL	PIE1
-		MOVWF	PIE1		;Habilita int por ADC (fin de conversion)
+		BSF	PIE1, ADIE		;Habilita int por ADC (fin de conversion)
 		ENDM
 		
 CFG_ALARM	MACRO
 		MOVLW 0x99
 		MOVWF UMBRAL_BCD
+        BANKSEL TRISC
+        BCF TRISC, TRISC0  ; RC0 como salida
 		BANKSEL PORTC
 		BCF PORTC,RC0
 		ENDM
@@ -181,6 +183,7 @@ INICIO:
     CFG_ADC
     CFG_ALARM
     BANKSEL INTCON
+    BSF INTCON, PEIE  ; Habilita interrupciones perifericas
     BSF INTCON, GIE
 LOOP:
     CALL    Delay_50us ; Delay de adquisicion (20us aprox.)
@@ -207,12 +210,12 @@ ISR_FIN:
     RETFIE 
 
 ISR_ADC:
-    BANKSEL ADCON0
     BANKSEL ADRESH
     MOVFW   ADRESH         ; Solo 8 bits
     MOVWF   ResultadoH	
     CALL    AD_BCD	   ; Convierte a binario
-    CALL    CONVERT_TO_DB
+;    CALL    CONVERT_TO_DB
+    CALL TX_ADQ_ASCII
     CALL    CHECK_ALARM
     BCF	    PIR1,ADIF	   ; Bajo bandera
     GOTO    ISR_FIN
@@ -602,62 +605,62 @@ CHECK_ALARM:
     BSF PORTC, RC0
     RETURN		
 
-INICIO_PRUEBA_TECL_DISPLAY:
-    CFG_DISP
-    CFG_TECLADO
-    BANKSEL INTCON
-    BSF INTCON, GIE
-    BCF STATUS, RP0
-    BCF STATUS, RP1
-    MOVLW .4
-    MOVWF DECENAS
-    MOVLW .5
-    MOVWF UNIDAD
-    CALL REFRESH_DISPLAYS
-    GOTO $-1
+;INICIO_PRUEBA_TECL_DISPLAY:
+;    CFG_DISP
+;   CFG_TECLADO
+;    BANKSEL INTCON
+;    BSF INTCON, GIE
+;    BCF STATUS, RP0
+;    BCF STATUS, RP1
+;    MOVLW .4
+;    MOVWF DECENAS
+;    MOVLW .5
+;    MOVWF UNIDAD
+;    CALL REFRESH_DISPLAYS
+;    GOTO $-1
     
 	
-INICIO_PRUEBA_EUSART:
-    CFG_UART_TX
-    BCF STATUS, RP0
-    BCF STATUS, RP1
-LOOP_PRUEBA:
-    MOVLW .1
-    MOVWF DECENAS
-    MOVLW .1
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
+;INICIO_PRUEBA_EUSART:
+;    CFG_UART_TX
+;    BCF STATUS, RP0
+;    BCF STATUS, RP1
+;LOOP_PRUEBA:
+;    MOVLW .1
+;    MOVWF DECENAS
+;    MOVLW .1
+;    MOVWF UNIDAD
+;    CALL TX_ADQ_ASCII
+;    
+;    MOVLW .1
+;    MOVWF DECENAS
+;    MOVLW .2
+;    MOVWF UNIDAD
+;    CALL TX_ADQ_ASCII
     
-    MOVLW .1
-    MOVWF DECENAS
-    MOVLW .2
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
+;    MOVLW .2
+;    MOVWF DECENAS
+;    MOVLW .1
+;    MOVWF UNIDAD
+;   CALL TX_ADQ_ASCII
     
-    MOVLW .2
-    MOVWF DECENAS
-    MOVLW .1
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
-    
-    MOVLW .1
-    MOVWF DECENAS
-    MOVLW .1
-    MOVWF UNIDAD
-    CALL TX_ADQ_ASCII
-    GOTO LOOP_PRUEBA
+;    MOVLW .1
+;    MOVWF DECENAS
+;    MOVLW .1
+;    MOVWF UNIDAD
+;    CALL TX_ADQ_ASCII
+;    GOTO LOOP_PRUEBA
 
-INICIO_PRUEBA_ADC:
-    CFG_DISP
-    CFG_ADC
-    BANKSEL INTCON
-    BSF INTCON, GIE
-LOOP_PRUEBA_ADC:
-    CALL    Delay_50us ;Delay de adquisicion (20us aprox.)
-    BANKSEL ADCON0
-    BSF     ADCON0, GO_DONE     ; Iniciar conversion  
-    CALL REFRESH_DISPLAYS
-    GOTO LOOP_PRUEBA_ADC
+;INICIO_PRUEBA_ADC:
+;    CFG_DISP
+;    CFG_ADC
+;    BANKSEL INTCON
+;    BSF INTCON, GIE
+;LOOP_PRUEBA_ADC:
+;    CALL    Delay_50us ;Delay de adquisicion (20us aprox.)
+;    BANKSEL ADCON0
+;    BSF     ADCON0, GO_DONE     ; Iniciar conversion  
+;    CALL REFRESH_DISPLAYS
+;    GOTO LOOP_PRUEBA_ADC
     
     
     END
