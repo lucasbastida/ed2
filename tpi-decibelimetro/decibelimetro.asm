@@ -38,10 +38,8 @@ NTECL_SET	    EQU .11
 	DISP_STATE
 	TEMP_ON_DISP_MASK
 	DB_BCD
-	DECENAS_DB
-	UNIDAD_DB
-	TEMP_PCLATH
 	DECIBELES_BCD
+	AUX_BCD
     ENDC
       
 CFG_UART_TX	MACRO
@@ -67,7 +65,7 @@ CFG_ADC		MACRO
 		MOVLW   b'00000001'
 		MOVWF   TRISE
 		BANKSEL ANSEL
-		MOVLW   b'00100000'        ; AN5 analógico, resto digital
+		MOVLW   b'00100000'        ; AN5 analogico, resto digital
 		MOVWF   ANSEL
 		CLRF    ANSELH             ; Puertos digitales superiores
 		BANKSEL ADCON1
@@ -213,19 +211,7 @@ ISR_ADC:
     MOVFW   ADRESH         ; Solo 8 bits
     MOVWF   ResultadoH	
     CALL    CONVERT_TO_DB
-    BANKSEL PCLATH
-    MOVFW TEMP_PCLATH
-    MOVWF PCLATH
-    MOVWF DECIBELES_BCD
-    MOVFW DECIBELES_BCD
-    ANDLW 0x0F
-    MOVWF UNIDAD_DB
-    MOVFW DECIBELES_BCD
-    MOVWF DECENAS_DB
-    SWAPF DECENAS_DB, W
-    ANDLW 0x0F
-    MOVWF DECENAS_DB
-    CALL    AD_BCD	   ; Convierte a binario
+    CALL    AD_BCD	   ; Convierte BINARIO a DECIMAL
     CALL    TX_ADQ_ASCII
     CALL    CHECK_ALARM
     BCF	    PIR1,ADIF	   ; Bajo bandera
@@ -337,22 +323,22 @@ FROM_DISP_TCL1:
     MOVLW NTECL_SET
     SUBWF NTECL, W
     BTFSC STATUS, Z
-    GOTO CONFIRM_TCL
+    GOTO  CONFIRM_TCL
     MOVLW NTECL_BACK
     SUBWF NTECL, W
     BTFSC STATUS, Z
-    GOTO LOAD_DISP_VAL
-    GOTO LOAD_TCL2
+    GOTO  LOAD_DISP_VAL
+    GOTO  LOAD_TCL2
     
 FROM_DISP_TCL2:
     MOVLW NTECL_SET
     SUBWF NTECL, W
     BTFSC STATUS, Z
-    GOTO CONFIRM_TCL
+    GOTO  CONFIRM_TCL
     MOVLW NTECL_BACK
     SUBWF NTECL, W
     BTFSC STATUS, Z
-    GOTO LOAD_DISP_VAL
+    GOTO  LOAD_DISP_VAL
     RETURN
 
 CLEAR_ALARM:
@@ -370,15 +356,15 @@ LOAD_DISP_VAL:
     MOVWF DISP1
     MOVLW DISP_VAL
     MOVWF DISP_STATE
-    CLRF TEMP_UMBRAL_BCD
+    CLRF  TEMP_UMBRAL_BCD
     RETURN    
 
 LOAD_DISP_UMB:
-    SWAPF UMBRAL_BCD, W
-    ANDLW 0x0F
-    MOVWF DISP4
     MOVFW UMBRAL_BCD
-    ANDLW 0x0F
+    CALL  AD_BCD
+    MOVFW DECENAS
+    MOVWF DISP4
+    MOVFW UNIDAD
     MOVWF DISP3
     MOVLW DISP_D_LITERAL
     MOVWF DISP2
@@ -428,26 +414,27 @@ CONFIRM_TCL:
     MOVWF UMBRAL_BCD
     GOTO LOAD_DISP_VAL
 
-AD_BCD:	    CLRF    CENTENA
+AD_BCD:	    MOVWF   AUX_BCD	;Variable auxiliar para entrar con cualquier registro
+	    CLRF    CENTENA
 	    CLRF    DECENAS
 	    CLRF    UNIDAD
 TEST_CENTENA MOVLW  d'100' 
-	    SUBWF   ResultadoH,0   ;ResultadoH - 100 -> W
+	    SUBWF   AUX_BCD,0   ;ResultadoH - 100 -> W
 	    BTFSC   STATUS,C
 	    GOTO    ADD_CENTENA	    ;si ResultadoH>100 sumo CENTENA    
 TEST_DECENA MOVLW   d'10' 
-	    SUBWF   ResultadoH,0    ;ResultadoH - 10 -> W
+	    SUBWF   AUX_BCD,0    ;ResultadoH - 10 -> W
 	    BTFSC   STATUS,C
 	    GOTO    ADD_DECENA	    ;si ADRESH>10 sumo DECENA
-	    MOVFW   ResultadoH
+	    MOVFW   AUX_BCD
 	    MOVWF   UNIDAD	    ;sino ADRESH va a UNIDAD
 	    RETURN    
 ADD_CENTENA BCF	    STATUS,C
-	    MOVWF   ResultadoH	    ;guardo el resto
+	    MOVWF   AUX_BCD	    ;guardo el resto
 	    INCF    CENTENA	    ;cuento una centena
 	    GOTO    TEST_CENTENA    ;sigo buscando centenas
 ADD_DECENA  BCF	    STATUS,C
-	    MOVWF   ResultadoH	    ;guardo el resto
+	    MOVWF   AUX_BCD	    ;guardo el resto
 	    INCF    DECENAS	    ;cuento una decena
 	    GOTO    TEST_DECENA	    ;sigo buscando decenas
 
@@ -536,16 +523,16 @@ LOAD_DISPLAY1:
     RETURN
     
 LOAD_LAST_ADQ:
-    MOVFW DECENAS_DB
+    MOVFW DECENAS
     MOVWF DISP4
-    MOVFW UNIDAD_DB
+    MOVFW UNIDAD
     MOVWF DISP3
     RETURN
     
 Delay_50us:
     BANKSEL ContadorDelay
-    movlw   d'12'
-    movwf   ContadorDelay
+    MOVLW   d'12'
+    MOVWF   ContadorDelay
 D1:
     NOP
     NOP
@@ -587,7 +574,6 @@ UART_TX:
     MOVWF TXREG
     RETURN
     
-
 TX_ADQ_ASCII:
     MOVFW CENTENA
     ADDLW .48
@@ -606,23 +592,23 @@ TX_ADQ_ASCII:
     
 CONVERT_TO_DB:
     BANKSEL PCLATH
-    MOVFW PCLATH
-    MOVWF TEMP_PCLATH
     MOVLW 0x02
     MOVWF PCLATH
     MOVFW ResultadoH
-    ADDWF PCL, F
+    CALL  TABLE_ADQ_TO_DB
+    CLRF  PCLATH
+    RETURN
     
-CHECK_ALARM:
-    MOVFW DECENAS_DB
-    MOVWF DB_BCD
-    SWAPF DB_BCD, F
-    MOVFW UNIDAD_DB
-    IORWF DB_BCD, F
-    MOVFW DB_BCD
-    SUBWF UMBRAL_BCD, W
-    BTFSS STATUS, C
-    BSF PORTC, RC0
+CHECK_ALARM:	    ;NO ANDA, IMPLEMENTAR!!!!!
+    ;MOVFW DECENAS
+    ;MOVWF DB_BCD
+    ;SWAPF DB_BCD, F
+    ;MOVFW UNIDAD
+    ;IORWF DB_BCD, F
+    ;MOVFW DB_BCD
+    ;SUBWF UMBRAL_BCD, W 
+    ;BTFSS STATUS, C
+    ;BSF PORTC, RC0
     RETURN		
 
 ;INICIO_PRUEBA_TECL_DISPLAY:
@@ -683,264 +669,262 @@ CHECK_ALARM:
 ;    GOTO LOOP_PRUEBA_ADC
     
     ORG 0X200
-TABLE_ADQ_TO_DB:
-    RETLW 0x00
-    RETLW 0x01
-    RETLW 0x02
-    RETLW 0x03
-    RETLW 0x04
-    RETLW 0x05
-    RETLW 0x06
-    RETLW 0x07
-    RETLW 0x08
-    RETLW 0x09
-    RETLW 0x10
-    RETLW 0x11
-    RETLW 0x12
-    RETLW 0x13
-    RETLW 0x14
-    RETLW 0x15
-    RETLW 0x16
-    RETLW 0x17
-    RETLW 0x18
-    RETLW 0x19
-    RETLW 0x20
-    RETLW 0x21
-    RETLW 0x22
-    RETLW 0x23
-    RETLW 0x24
-    RETLW 0x25
-    RETLW 0x26
-    RETLW 0x27
-    RETLW 0x28
-    RETLW 0x29
-    RETLW 0x30
-    RETLW 0x31
-    RETLW 0x32
-    RETLW 0x33
-    RETLW 0x34
-    RETLW 0x35
-    RETLW 0x36
-    RETLW 0x37
-    RETLW 0x38
-    RETLW 0x39
-    RETLW 0x40
-    RETLW 0x41
-    RETLW 0x42
-    RETLW 0x43
-    RETLW 0x44
-    RETLW 0x45
-    RETLW 0x46
-    RETLW 0x47
-    RETLW 0x48
-    RETLW 0x49
-    RETLW 0x50
-    RETLW 0x51
-    RETLW 0x52
-    RETLW 0x53
-    RETLW 0x54
-    RETLW 0x55
-    RETLW 0x56
-    RETLW 0x57
-    RETLW 0x58
-    RETLW 0x59
-    RETLW 0x60
-    RETLW 0x61
-    RETLW 0x62
-    RETLW 0x63
-    RETLW 0x64
-    RETLW 0x65
-    RETLW 0x66
-    RETLW 0x67
-    RETLW 0x68
-    RETLW 0x69
-    RETLW 0x70
-    RETLW 0x71
-    RETLW 0x72
-    RETLW 0x73
-    RETLW 0x74
-    RETLW 0x75
-    RETLW 0x76
-    RETLW 0x77
-    RETLW 0x78
-    RETLW 0x79
-    RETLW 0x80
-    RETLW 0x81
-    RETLW 0x82
-    RETLW 0x83
-    RETLW 0x84
-    RETLW 0x85
-    RETLW 0x86
-    RETLW 0x87
-    RETLW 0x88
-    RETLW 0x89
-    RETLW 0x90
-    RETLW 0x91
-    RETLW 0x92
-    RETLW 0x93
-    RETLW 0x94
-    RETLW 0x95
-    RETLW 0x96
-    RETLW 0x97
-    RETLW 0x98
-    RETLW 0x99
-    RETLW 0x00
-    RETLW 0x01
-    RETLW 0x02
-    RETLW 0x03
-    RETLW 0x04
-    RETLW 0x05
-    RETLW 0x06
-    RETLW 0x07
-    RETLW 0x08
-    RETLW 0x09
-    RETLW 0x10
-    RETLW 0x11
-    RETLW 0x12
-    RETLW 0x13
-    RETLW 0x14
-    RETLW 0x15
-    RETLW 0x16
-    RETLW 0x17
-    RETLW 0x18
-    RETLW 0x19
-    RETLW 0x20
-    RETLW 0x21
-    RETLW 0x22
-    RETLW 0x23
-    RETLW 0x24
-    RETLW 0x25
-    RETLW 0x26
-    RETLW 0x27
-    RETLW 0x28
-    RETLW 0x29
-    RETLW 0x30
-    RETLW 0x31
-    RETLW 0x32
-    RETLW 0x33
-    RETLW 0x34
-    RETLW 0x35
-    RETLW 0x36
-    RETLW 0x37
-    RETLW 0x38
-    RETLW 0x39
-    RETLW 0x40
-    RETLW 0x41
-    RETLW 0x42
-    RETLW 0x43
-    RETLW 0x44
-    RETLW 0x45
-    RETLW 0x46
-    RETLW 0x47
-    RETLW 0x48
-    RETLW 0x49
-    RETLW 0x50
-    RETLW 0x51
-    RETLW 0x52
-    RETLW 0x53
-    RETLW 0x54
-    RETLW 0x55
-    RETLW 0x56
-    RETLW 0x57
-    RETLW 0x58
-    RETLW 0x59
-    RETLW 0x60
-    RETLW 0x61
-    RETLW 0x62
-    RETLW 0x63
-    RETLW 0x64
-    RETLW 0x65
-    RETLW 0x66
-    RETLW 0x67
-    RETLW 0x68
-    RETLW 0x69
-    RETLW 0x70
-    RETLW 0x71
-    RETLW 0x72
-    RETLW 0x73
-    RETLW 0x74
-    RETLW 0x75
-    RETLW 0x76
-    RETLW 0x77
-    RETLW 0x78
-    RETLW 0x79
-    RETLW 0x80
-    RETLW 0x81
-    RETLW 0x82
-    RETLW 0x83
-    RETLW 0x84
-    RETLW 0x85
-    RETLW 0x86
-    RETLW 0x87
-    RETLW 0x88
-    RETLW 0x89
-    RETLW 0x90
-    RETLW 0x91
-    RETLW 0x92
-    RETLW 0x93
-    RETLW 0x94
-    RETLW 0x95
-    RETLW 0x96
-    RETLW 0x97
-    RETLW 0x98
-    RETLW 0x99
-    RETLW 0x00
-    RETLW 0x01
-    RETLW 0x02
-    RETLW 0x03
-    RETLW 0x04
-    RETLW 0x05
-    RETLW 0x06
-    RETLW 0x07
-    RETLW 0x08
-    RETLW 0x09
-    RETLW 0x10
-    RETLW 0x11
-    RETLW 0x12
-    RETLW 0x13
-    RETLW 0x14
-    RETLW 0x15
-    RETLW 0x16
-    RETLW 0x17
-    RETLW 0x18
-    RETLW 0x19
-    RETLW 0x20
-    RETLW 0x21
-    RETLW 0x22
-    RETLW 0x23
-    RETLW 0x24
-    RETLW 0x25
-    RETLW 0x26
-    RETLW 0x27
-    RETLW 0x28
-    RETLW 0x29
-    RETLW 0x30
-    RETLW 0x31
-    RETLW 0x32
-    RETLW 0x33
-    RETLW 0x34
-    RETLW 0x35
-    RETLW 0x36
-    RETLW 0x37
-    RETLW 0x38
-    RETLW 0x39
-    RETLW 0x40
-    RETLW 0x41
-    RETLW 0x42
-    RETLW 0x43
-    RETLW 0x44
-    RETLW 0x45
-    RETLW 0x46
-    RETLW 0x47
-    RETLW 0x48
-    RETLW 0x49
-    RETLW 0x50
-    RETLW 0x51
-    RETLW 0x52
-    RETLW 0x53
-    RETLW 0x54
-    RETLW 0x55
-    RETLW 0x56
+TABLE_ADQ_TO_DB: ADDWF PCL, F
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .00
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .01
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .02
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .03
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .04
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .05
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .06
+    RETLW .07
+    RETLW .07
+    RETLW .07
+    RETLW .07
+    RETLW .07
+    RETLW .07
+    RETLW .07
+    RETLW .07
+    RETLW .00
+    RETLW .01
+    RETLW .02
+    RETLW .03
+    RETLW .04
+    RETLW .05
+    RETLW .06
+    RETLW .07
+    RETLW .08
+    RETLW .09
+    RETLW .10
+    RETLW .11
+    RETLW .12
+    RETLW .13
+    RETLW .14
+    RETLW .15
+    RETLW .16
+    RETLW .17
+    RETLW .18
+    RETLW .19
+    RETLW .20
+    RETLW .21
+    RETLW .22
+    RETLW .23
+    RETLW .24
+    RETLW .25
+    RETLW .26
+    RETLW .27
+    RETLW .28
+    RETLW .29
+    RETLW .30
+    RETLW .31
+    RETLW .32
+    RETLW .33
+    RETLW .34
+    RETLW .35
+    RETLW .36
+    RETLW .37
+    RETLW .38
+    RETLW .39
+    RETLW .40
+    RETLW .41
+    RETLW .42
+    RETLW .43
+    RETLW .44
+    RETLW .45
+    RETLW .46
+    RETLW .47
+    RETLW .48
+    RETLW .49
+    RETLW .50
+    RETLW .51
+    RETLW .52
+    RETLW .53
+    RETLW .54
+    RETLW .55
+    RETLW .56
+    RETLW .57
+    RETLW .58
+    RETLW .59
+    RETLW .60
+    RETLW .61
+    RETLW .62
+    RETLW .63
+    RETLW .64
+    RETLW .65
+    RETLW .66
+    RETLW .67
+    RETLW .68
+    RETLW .69
+    RETLW .70
+    RETLW .71
+    RETLW .72
+    RETLW .73
+    RETLW .74
+    RETLW .75
+    RETLW .76
+    RETLW .77
+    RETLW .78
+    RETLW .79
+    RETLW .80
+    RETLW .81
+    RETLW .82
+    RETLW .83
+    RETLW .84
+    RETLW .85
+    RETLW .86
+    RETLW .87
+    RETLW .88
+    RETLW .89
+    RETLW .90
+    RETLW .91
+    RETLW .92
+    RETLW .93
+    RETLW .94
+    RETLW .95
+    RETLW .96
+    RETLW .97
+    RETLW .98
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .99
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .98
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .97
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .96
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .95
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .94
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .93
+    RETLW .92
+    RETLW .92
+    RETLW .92
+    RETLW .92
+    RETLW .92
+    RETLW .92
+    RETLW .92
+    RETLW .92
+    RETLW .92
 
     END
-
