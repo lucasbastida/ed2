@@ -303,78 +303,78 @@ TECL_LOAD:
 FROM_DISP_VAL:
     MOVLW NTECL_BACK
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO CLEAR_ALARM
+    BTFSC STATUS, Z	    ; Se presionó BACK?
+    GOTO CLEAR_ALARM	    ; SI -> limpio alarma
     MOVLW NTECL_SET
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO LOAD_DISP_UMB
+    BTFSC STATUS, Z	    ; Se presionó SET?
+    GOTO LOAD_DISP_UMB	    ; SI -> voy a la rutina de mostrar el valor umbral
     RETURN
-    
+
 FROM_DISP_UMB:
     MOVLW NTECL_BACK
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO LOAD_DISP_VAL
+    BTFSC STATUS, Z	    ; Se presionó BACK?
+    GOTO LOAD_DISP_VAL	    ; SI -> voy a mostrar valor actual
     MOVLW NTECL_SET
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO LOAD_DISP_VAL
-    GOTO LOAD_TCL1
+    BTFSC STATUS, Z	    ; Se presionó SET?
+    GOTO LOAD_DISP_VAL	    ; SI -> voy a mostrar valor actual
+    GOTO LOAD_TCL1	    ; Sino era BACK o SET -> se presiono algun numero -> lo cargo
     
 FROM_DISP_TCL1:
     MOVLW NTECL_SET
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO  CONFIRM_TCL
-    MOVLW NTECL_BACK
+    BTFSC STATUS, Z	    ; Se presionó SET?
+    GOTO  CONFIRM_TCL	    ; SI -> rutina de confirmar tecla
+    MOVLW NTECL_BACK	    
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO  LOAD_DISP_VAL
-    GOTO  LOAD_TCL2
-    
+    BTFSC STATUS, Z	    ; Se presionó BACK?
+    GOTO  LOAD_DISP_VAL	    ; SI -> voy a mostrar valor actual
+    GOTO  LOAD_TCL2	    ; Sino era BACK o SET -> se presiono algun numero -> lo cargo
+
 FROM_DISP_TCL2:
     MOVLW NTECL_SET
     SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO  CONFIRM_TCL
-    MOVLW NTECL_BACK
-    SUBWF NTECL, W
-    BTFSC STATUS, Z
-    GOTO  LOAD_DISP_VAL
-    RETURN
+    BTFSC STATUS, Z	    ; Se presionó SET?
+    GOTO  CONFIRM_TCL	    ; SI -> rutina de confirmar tecla
+    MOVLW NTECL_BACK	
+    SUBWF NTECL, W	    
+    BTFSC STATUS, Z	    ; Se presionó BACK?
+    GOTO  LOAD_DISP_VAL	    ; SI -> voy a mostrar valor actual
+    RETURN		    ; Sino era BACK o SET -> se presiono algun numero -> el limite era dos digitos
 
 CLEAR_ALARM:
-    BCF PORTC, RC0
+    BCF PORTC, RC0		; Apago el led
     RETURN
 
 LOAD_DISP_VAL:
     MOVFW DECENAS
-    MOVWF DISP4
+    MOVWF DISP4		    ; Decenas en display4
     MOVFW UNIDAD
-    MOVWF DISP3
+    MOVWF DISP3		    ; Unidades en display3
     MOVLW DISP_D_LITERAL
-    MOVWF DISP2
+    MOVWF DISP2		    ; 'd' en display2
     MOVLW DISP_B_LITERAL
-    MOVWF DISP1
-    MOVLW DISP_VAL
-    MOVWF DISP_STATE
-    CLRF  TEMP_UMBRAL_BCD
+    MOVWF DISP1		    ; 'b' en display1
+    MOVLW DISP_VAL	
+    MOVWF DISP_STATE	    ; Estado actual = mostrar valor actual
+    CLRF  TEMP_UMBRAL_BCD   
     RETURN    
 
 LOAD_DISP_UMB:
     MOVFW UMBRAL_BCD
-    CALL  AD_BCD
-    MOVFW DECENAS
-    MOVWF DISP4
+    CALL  AD_BCD	    ; Separo el umbral en dos digitos (DECENAS y UNIDAD)
+    MOVFW DECENAS	    
+    MOVWF DISP4		    ; Decenas en display4
     MOVFW UNIDAD
-    MOVWF DISP3
+    MOVWF DISP3		    ; Unidades en display3
     MOVLW DISP_D_LITERAL
-    MOVWF DISP2
+    MOVWF DISP2		    ; 'd' en display2
     MOVLW DISP_B_LITERAL
-    MOVWF DISP1
+    MOVWF DISP1		    ; 'b' en display1
     MOVLW DISP_UMB
-    MOVWF DISP_STATE
+    MOVWF DISP_STATE	    ; Estado actual = mostrar valor umbral
     RETURN
     
 LOAD_TCL1:
@@ -422,11 +422,11 @@ AD_BCD:	    MOVWF   AUX_BCD	;Variable auxiliar para entrar con cualquier registr
 	    CLRF    DECENAS
 	    CLRF    UNIDAD
 TEST_CENTENA MOVLW  d'100' 
-	    SUBWF   AUX_BCD,0   ;ResultadoH - 100 -> W
+	    SUBWF   AUX_BCD,0   ;AUX_BCD - 100 -> W
 	    BTFSC   STATUS,C
-	    GOTO    ADD_CENTENA	    ;si ResultadoH>100 sumo CENTENA    
+	    GOTO    ADD_CENTENA	    ;si AUX_BCD>100 sumo CENTENA    
 TEST_DECENA MOVLW   d'10' 
-	    SUBWF   AUX_BCD,0    ;ResultadoH - 10 -> W
+	    SUBWF   AUX_BCD,0    ;AUX_BCD - 10 -> W
 	    BTFSC   STATUS,C
 	    GOTO    ADD_DECENA	    ;si ADRESH>10 sumo DECENA
 	    MOVFW   AUX_BCD
@@ -874,3 +874,4 @@ TABLE_ADQ_TO_DB: ADDWF PCL, F
     RETLW .92
 
     END
+
